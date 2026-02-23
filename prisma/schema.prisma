@@ -22,6 +22,7 @@ model User {
   sessions      Session[]
   postedJobs    Job[]     @relation("PostedBy")
   interviews    Interview[] @relation("Interviewer")
+  interviewInvites InterviewInvite[] @relation("Interviewer")
 }
 
 enum Role {
@@ -112,7 +113,8 @@ enum JobStatus {
 
 model Candidate {
   id        String   @id @default(uuid())
-  email     String
+  email     String    @unique
+  password  String
   name      String
   phone     String?
   linkedin  String?
@@ -132,8 +134,10 @@ model Candidate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   applications Application[]
+  notifications Notification[]
+  messages    Message[]
+  interviewInvites InterviewInvite[]
 
-  @@unique([email])
   @@index([status])
   @@index([aiScore])
 }
@@ -166,13 +170,25 @@ model Application {
   jobId       String
   job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
   status      ApplicationStatus @default(SUBMITTED)
+  
+  // Application-specific data (stored per application)
+  name        String?
+  email       String?
+  phone       String?
+  location    String?
+  linkedin    String?
+  website     String?
   coverLetter String? @db.Text
+  resumeUrl   String?
+  resumeText  String? @db.Text
+  
   answers     Json?    // Screening questions answers
   screeningScore Int?  // Auto-graded screening score
   recruiterNotes String? @db.Text
   appliedAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   interviews  Interview[]
+  interviewInvites InterviewInvite[]
 
   @@unique([candidateId, jobId])
   @@index([status])
@@ -244,4 +260,79 @@ enum QuestionType {
   YES_NO
   MULTIPLE_CHOICE
   SCALE
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  type        NotificationType
+  title       String
+  message     String   @db.Text
+  relatedType String?  // Application, Interview, etc.
+  relatedId   String?  // ID of related entity
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([candidateId])
+  @@index([read])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  senderId    String?  // null if from admin/system
+  senderName  String
+  content     String   @db.Text
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([candidateId])
+  @@index([createdAt])
+}
+
+model InterviewInvite {
+  id            String   @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  candidateId   String
+  candidate     Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  interviewerId String?
+  interviewer   User?    @relation("Interviewer", fields: [interviewerId], references: [id], onDelete: SetNull)
+  type          InterviewType @default(VIDEO)
+  scheduledAt   DateTime
+  duration      Int      @default(30) // minutes
+  location      String?  // Zoom link, office address, or phone
+  notes         String?  @db.Text
+  status        InviteStatus @default(PENDING)
+  candidateResponse String? @db.Text // Candidate's response message
+  respondedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([candidateId])
+  @@index([status])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  APPLICATION_RECEIVED
+  APPLICATION_REVIEWED
+  INTERVIEW_SCHEDULED
+  OFFER_SENT
+  REJECTED
+  HIRED
+  STATUS_UPDATE
+  MESSAGE
+  INTERVIEW_INVITE
+  GENERAL
 }
