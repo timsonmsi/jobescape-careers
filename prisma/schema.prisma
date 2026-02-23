@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String?
+  name          String?
+  role          Role      @default(RECRUITER)
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  postedJobs    Job[]     @relation("PostedBy")
+  interviews    Interview[] @relation("Interviewer")
+}
+
+enum Role {
+  ADMIN
+  RECRUITER
+  VIEWER
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Job {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String   @db.Text
+  requirements String[] @default([])
+  responsibilities String[] @default([])
+  benefits    String[] @default([])
+  location    String
+  type        JobType  @default(FULL_TIME)
+  department  String?
+  salaryMin   Int?
+  salaryMax   Int?
+  currency    String   @default("USD")
+  status      JobStatus @default(DRAFT)
+  publishedAt DateTime?
+  closedAt    DateTime?
+  postedById  String?
+  postedBy    User?    @relation("PostedBy", fields: [postedById], references: [id], onDelete: SetNull)
+  applications Application[]
+  screeningQuestions ScreeningQuestion[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([publishedAt])
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+model Candidate {
+  id        String   @id @default(uuid())
+  email     String
+  name      String
+  phone     String?
+  linkedin  String?
+  website   String?
+  location  String?
+  resumeUrl String?
+  resumeText String? @db.Text
+  coverLetter String? @db.Text
+  skills    String[] @default([])
+  experience Int?    // years
+  education String?
+  source    CandidateSource @default(DIRECT)
+  aiScore   Int?     // 0-100 AI matching score
+  aiSummary String? @db.Text
+  redFlags  String[] @default([])
+  status    CandidateStatus @default(NEW)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  applications Application[]
+
+  @@unique([email])
+  @@index([status])
+  @@index([aiScore])
+}
+
+enum CandidateSource {
+  DIRECT
+  LINKEDIN
+  INDEED
+  GLASSDOOR
+  REFERRAL
+  AGENCY
+  OTHER
+}
+
+enum CandidateStatus {
+  NEW
+  CONTACTED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+  BLACKLISTED
+}
+
+model Application {
+  id          String   @id @default(uuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status      ApplicationStatus @default(SUBMITTED)
+  coverLetter String? @db.Text
+  answers     Json?    // Screening questions answers
+  screeningScore Int?  // Auto-graded screening score
+  recruiterNotes String? @db.Text
+  appliedAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  interviews  Interview[]
+
+  @@unique([candidateId, jobId])
+  @@index([status])
+  @@index([jobId])
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+model Interview {
+  id          String   @id @default(uuid())
+  applicationId String
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewerId String?
+  interviewer User?    @relation("Interviewer", fields: [interviewerId], references: [id], onDelete: SetNull)
+  type        InterviewType @default(PHONE)
+  status      InterviewStatus @default(SCHEDULED)
+  scheduledAt DateTime
+  duration    Int      @default(30) // minutes
+  location    String?  // Zoom link, office address, or phone
+  notes       String? @db.Text
+  feedback    String? @db.Text
+  score       Int?     // 1-5
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+enum InterviewType {
+  PHONE
+  VIDEO
+  ONSITE
+  TECHNICAL
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model ScreeningQuestion {
+  id       String   @id @default(uuid())
+  jobId    String
+  job      Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  question String
+  type     QuestionType @default(TEXT)
+  required Boolean  @default(true)
+  options  String[] @default([]) // For multiple choice
+  correctAnswer String? // For auto-grading
+  weight   Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+}
+
+enum QuestionType {
+  TEXT
+  YES_NO
+  MULTIPLE_CHOICE
+  SCALE
+}
