@@ -8,31 +8,33 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Get the application to find the resume URL
+    // params.id could be application ID or filename
+    let resumePath: string | null = null;
+    
+    // First try to find by application ID
     const application = await prisma.application.findUnique({
       where: { id: params.id },
       select: {
         resumeUrl: true,
-        candidate: {
-          select: {
-            resumeUrl: true,
-          },
-        },
       },
     });
 
-    const resumeUrl = application?.resumeUrl || application?.candidate?.resumeUrl;
+    if (application?.resumeUrl) {
+      // resumeUrl is now just the filename
+      const uploadDir = process.env.UPLOAD_DIR || "/tmp/uploads";
+      resumePath = join(uploadDir, "resumes", application.resumeUrl);
+    } else {
+      // Try to find by filename directly
+      const uploadDir = process.env.UPLOAD_DIR || "/tmp/uploads";
+      resumePath = join(uploadDir, "resumes", params.id);
+    }
 
-    if (!resumeUrl) {
+    if (!resumePath) {
       return NextResponse.json(
         { error: "Resume not found" },
         { status: 404 }
       );
     }
-
-    // The resumeUrl is like "/uploads/resumes/xxx.pdf"
-    // We need to read from the local file system
-    const resumePath = join(process.cwd(), resumeUrl);
 
     try {
       const file = await fs.readFile(resumePath);
@@ -61,26 +63,10 @@ export async function GET(
       console.error("File not found:", resumePath);
       console.error("File error:", fileError.message);
       
-      // Check if file exists
-      try {
-        await fs.access(resumePath);
-      } catch (accessError: any) {
-        console.error("File access error:", accessError.message);
-        console.error("Uploads directory contents:");
-        try {
-          const uploadsDir = join(process.cwd(), "uploads", "resumes");
-          const files = await fs.readdir(uploadsDir);
-          console.error("Files in uploads/resumes:", files);
-        } catch (e) {
-          console.error("Cannot read uploads directory");
-        }
-      }
-      
       return NextResponse.json(
         { 
-          error: "Resume file not found on server",
-          details: fileError.message,
-          path: resumePath
+          error: "Resume file not found",
+          details: fileError.message
         },
         { status: 404 }
       );
