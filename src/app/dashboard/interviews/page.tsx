@@ -275,7 +275,7 @@ export default function InterviewsPage() {
                             </div>
                             {invite.candidateResponse && (
                               <div className="p-3 bg-white rounded-lg text-gray-700 italic">
-                                "{invite.candidateResponse}"
+                                &quot;{invite.candidateResponse}&quot;
                               </div>
                             )}
                             {invite.respondedAt && (

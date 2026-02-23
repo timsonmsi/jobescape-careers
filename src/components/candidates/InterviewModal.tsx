@@ -198,7 +198,7 @@ export function InterviewModal({
                   <ul className="space-y-1 text-blue-700">
                     <li>• Candidate receives an email notification</li>
                     <li>• They can accept or decline the invite</li>
-                    <li>• You'll be notified of their response</li>
+                    <li>• You&apos;ll be notified of their response</li>
                     <li>• If accepted, interview is added to schedule</li>
                   </ul>
                 </div>
