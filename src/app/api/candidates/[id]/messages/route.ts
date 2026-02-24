@@ -7,11 +7,18 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    console.log("=== GET /api/candidates/[id]/messages ===");
+    console.log("Candidate ID:", params.id);
+    console.log("Request URL:", request.url);
+    
     const messages = await prisma.message.findMany({
       where: { candidateId: params.id },
       orderBy: { createdAt: "asc" },
       take: 100,
     });
+
+    console.log("Messages returned:", messages.length);
+    console.log("==============================");
 
     return NextResponse.json(messages);
   } catch (error) {
@@ -32,25 +39,23 @@ export async function POST(
     const body = await request.json();
     const { senderName, content } = body;
 
+    console.log("=== CREATING MESSAGE ===");
+    console.log("Candidate ID:", params.id);
+    console.log("Sender:", senderName);
+    console.log("Content:", content.substring(0, 50));
+
     const message = await prisma.message.create({
       data: {
         candidateId: params.id,
         senderName,
         content,
+        read: false, // Explicitly mark as unread for admin to see
       },
     });
 
-    // Create notification for the candidate
-    await prisma.notification.create({
-      data: {
-        candidateId: params.id,
-        type: "MESSAGE",
-        title: `New message from ${senderName}`,
-        message: content.substring(0, 200),
-        relatedType: "Message",
-        relatedId: message.id,
-      },
-    });
+    console.log("Message created:", message.id);
+    console.log("Message read status:", message.read);
+    console.log("======================");
 
     return NextResponse.json(message, { status: 201 });
   } catch (error) {

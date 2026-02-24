@@ -158,14 +158,14 @@ export function CandidateDetailModal({ application, onClose, onStatusChange }: C
                   )}
 
                   {/* Resume */}
-                  {application.candidate.resumeUrl && (
+                  {(application.resumeUrl || application.candidate.resumeUrl) && (
                     <div>
                       <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                         <FileText className="w-4 h-4 text-blue-600" />
                         Resume / CV
                       </div>
                       <a
-                        href={application.candidate.resumeUrl}
+                        href={`/api/resumes/${application.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-blue-600 hover:underline flex items-center gap-2"
@@ -173,6 +173,9 @@ export function CandidateDetailModal({ application, onClose, onStatusChange }: C
                         <ExternalLink className="w-4 h-4" />
                         View Resume
                       </a>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Resume: {application.resumeUrl || application.candidate.resumeUrl}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -195,27 +198,38 @@ export function CandidateDetailModal({ application, onClose, onStatusChange }: C
                   {/* Contact Info */}
                   <div className="space-y-3">
                     <div className="text-sm font-medium text-gray-700">Contact</div>
-                    {application.candidate.phone && (
+                    {(application.phone || application.candidate.phone) && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Phone className="w-4 h-4 text-blue-600" />
-                        <span>{application.candidate.phone}</span>
+                        <span>{application.phone || application.candidate.phone}</span>
                       </div>
                     )}
-                    {application.candidate.location && (
+                    {(application.location || application.candidate.location) && (
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <MapPin className="w-4 h-4 text-blue-600" />
-                        <span>{application.candidate.location}</span>
+                        <span>{application.location || application.candidate.location}</span>
                       </div>
                     )}
-                    {application.candidate.linkedin && (
+                    {(application.linkedin || application.candidate.linkedin) && (
                       <a
-                        href={application.candidate.linkedin}
+                        href={application.linkedin || application.candidate.linkedin}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
                       >
                         <Linkedin className="w-4 h-4" />
                         <span>LinkedIn</span>
+                      </a>
+                    )}
+                    {(application.website || application.candidate.website) && (
+                      <a
+                        href={application.website || application.candidate.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Website</span>
                       </a>
                     )}
                   </div>

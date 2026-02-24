@@ -5,11 +5,17 @@ import { JobStatus } from "@prisma/client";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status") || "PUBLISHED";
+    const status = searchParams.get("status");
     const department = searchParams.get("department");
     const type = searchParams.get("type");
 
-    const where: any = { status: status as JobStatus };
+    console.log("Fetching jobs with filters:", { status, department, type });
+
+    const where: any = {};
+
+    if (status) {
+      where.status = status as JobStatus;
+    }
 
     if (department) {
       where.department = department;
@@ -19,29 +25,26 @@ export async function GET(request: NextRequest) {
       where.type = type;
     }
 
+    console.log("Query where:", JSON.stringify(where, null, 2));
+
     const jobs = await prisma.job.findMany({
       where,
-      orderBy: { publishedAt: "desc" },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-        location: true,
-        type: true,
-        department: true,
-        salaryMin: true,
-        salaryMax: true,
-        currency: true,
-        publishedAt: true,
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: {
+          select: { applications: true },
+        },
       },
     });
 
+    console.log("Jobs found:", jobs.length);
     return NextResponse.json(jobs);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching jobs:", error);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
     return NextResponse.json(
-      { error: "Failed to fetch jobs" },
+      { error: "Failed to fetch jobs", details: error.message },
       { status: 500 }
     );
   }

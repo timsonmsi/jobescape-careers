@@ -19,7 +19,7 @@ const jobTypes = [
 
 export default function NewJobPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     department: "",
@@ -34,9 +34,9 @@ export default function NewJobPage() {
   const [responsibilities, setResponsibilities] = useState([""]);
   const [benefits, setBenefits] = useState([""]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, status: "PUBLISHED" | "DRAFT" = "PUBLISHED") => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
 
     try {
       const response = await fetch("/api/jobs", {
@@ -49,11 +49,16 @@ export default function NewJobPage() {
           requirements: requirements.filter((r) => r.trim()),
           responsibilities: responsibilities.filter((r) => r.trim()),
           benefits: benefits.filter((b) => b.trim()),
-          status: "PUBLISHED",
+          status: status,
         }),
       });
 
       if (response.ok) {
+        if (status === "DRAFT") {
+          alert("Job saved as draft!");
+        } else {
+          alert("Job posted successfully!");
+        }
         router.push("/dashboard/jobs");
       } else {
         alert("Failed to create job");
@@ -62,7 +67,7 @@ export default function NewJobPage() {
       console.error("Error creating job:", error);
       alert("Failed to create job");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -314,12 +319,25 @@ export default function NewJobPage() {
         </Card>
 
         <div className="flex gap-4">
-          <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Post Job"}
+          <Button 
+            type="submit" 
+            onClick={(e) => handleSubmit(e, "PUBLISHED")}
+            disabled={saving}
+            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+          >
+            {saving ? "Posting..." : "Post Job"}
           </Button>
           <Button
             type="button"
             variant="outline"
+            onClick={(e) => handleSubmit(e, "DRAFT")}
+            disabled={saving}
+          >
+            {saving ? "Saving..." : "Save to Drafts"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
             onClick={() => router.back()}
           >
             Cancel

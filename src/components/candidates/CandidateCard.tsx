@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,6 +41,7 @@ interface CandidateCardProps {
     }[];
   };
   onStatusChange: (applicationId: string, newStatus: string) => void;
+  unreadMessages?: number;
 }
 
 const statusColors: Record<string, "default" | "secondary" | "warning" | "success" | "destructive"> = {
@@ -63,14 +64,27 @@ const applicationStatusOptions = [
   { value: "REJECTED", label: "Rejected" },
 ];
 
-export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps) {
+export function CandidateCard({ candidate, onStatusChange, unreadMessages }: CandidateCardProps) {
   const [selectedStatus, setSelectedStatus] = useState(candidate.applications[0]?.status || "SUBMITTED");
   const [selectedApplicationId, setSelectedApplicationId] = useState(candidate.applications[0]?.id);
   const [showChat, setShowChat] = useState(false);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
+  const [refreshUnread, setRefreshUnread] = useState(0);
 
   // Get the selected application data
   const selectedApp = candidate.applications.find(a => a.id === selectedApplicationId) || candidate.applications[0];
+
+  // Debug logging
+  useEffect(() => {
+    console.log("=== CANDIDATE CARD DEBUG ===");
+    console.log("selectedApp:", selectedApp);
+    console.log("candidate:", candidate);
+    console.log("phone from app:", selectedApp?.phone, "from candidate:", candidate.phone);
+    console.log("resumeUrl from app:", selectedApp?.resumeUrl, "from candidate:", candidate.resumeUrl);
+    console.log("coverLetter from app:", selectedApp?.coverLetter);
+    console.log("application ID for resume:", selectedApp?.id || candidate.applications[0]?.id);
+    console.log("===========================");
+  }, [selectedApp, candidate]);
 
   const handleStatusChange = (newStatus: string) => {
     setSelectedStatus(newStatus);
@@ -87,6 +101,11 @@ export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps)
     }
   };
 
+  // Trigger refresh of unread count
+  const triggerRefreshUnread = () => {
+    setRefreshUnread(prev => prev + 1);
+  };
+
   return (
     <Card className="hover:shadow-lg transition-shadow border-blue-100">
       <CardContent className="p-6">
@@ -98,7 +117,15 @@ export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps)
                 {candidate.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
               </div>
               <div>
-                <h3 className="font-semibold text-lg text-gray-900">{candidate.name}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-lg text-gray-900">{candidate.name}</h3>
+                  {unreadMessages && unreadMessages > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      <MessageSquare className="w-3 h-3 mr-1" />
+                      {unreadMessages}
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-gray-600">{candidate.email}</p>
                 {selectedApp && (
                   <p className="text-xs text-gray-500 mt-1">
@@ -208,7 +235,7 @@ export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps)
 
           {/* Resume & Cover Letter Section */}
           <div className="space-y-3 pt-4 border-t border-gray-100">
-            {(selectedApp?.resumeUrl || candidate.resumeUrl) && (
+            {(selectedApp?.resumeUrl || candidate.resumeUrl) ? (
               <div>
                 <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-blue-600" />
@@ -226,10 +253,17 @@ export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps)
                   </svg>
                   View Resume
                 </a>
+                <div className="text-xs text-gray-500 mt-1">
+                  Resume URL: {selectedApp?.resumeUrl || candidate.resumeUrl}
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 italic">
+                No resume uploaded
               </div>
             )}
 
-            {selectedApp?.coverLetter && (
+            {selectedApp?.coverLetter ? (
               <div>
                 <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-blue-600" />
@@ -238,6 +272,10 @@ export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps)
                 <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700 max-h-40 overflow-y-auto">
                   {selectedApp.coverLetter}
                 </div>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500 italic">
+                No cover letter provided
               </div>
             )}
           </div>
@@ -314,6 +352,7 @@ export function CandidateCard({ candidate, onStatusChange }: CandidateCardProps)
           candidateId={candidate.id}
           candidateName={candidate.name}
           onClose={() => setShowChat(false)}
+          onMessagesRead={triggerRefreshUnread}
         />
       )}
 

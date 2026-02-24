@@ -91,11 +91,16 @@ export default function EditJobPage() {
           requirements: requirements.filter((r) => r.trim()),
           responsibilities: responsibilities.filter((r) => r.trim()),
           benefits: benefits.filter((b) => b.trim()),
+          status: formData.status,
+          publishedAt: formData.status === "PUBLISHED" ? new Date().toISOString() : null,
+          closedAt: formData.status === "CLOSED" ? new Date().toISOString() : null,
         }),
       });
 
       if (response.ok) {
         alert("Job updated successfully!");
+        // Dispatch event to refresh jobs list
+        window.dispatchEvent(new CustomEvent('jobUpdated'));
         router.push("/dashboard/jobs");
       } else {
         alert("Failed to update job");
@@ -225,7 +230,7 @@ export default function EditJobPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
+              <Label htmlFor="status">Job Status *</Label>
               <Select
                 id="status"
                 value={formData.status}

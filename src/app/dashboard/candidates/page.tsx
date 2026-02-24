@@ -17,25 +17,32 @@ interface Application {
   id: string;
   status: string;
   appliedAt: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  location?: string | null;
   candidate: {
     id: string;
     name: string;
     email: string;
     phone: string | null;
     location: string | null;
+    linkedin: string | null;
+    website: string | null;
     skills: string[];
     experience: number | null;
+    education: string | null;
     aiScore: number | null;
     resumeUrl: string | null;
     resumeText: string | null;
     coverLetter: string | null;
-    education: string | null;
   };
   job: {
     id: string;
     title: string;
     slug: string;
   };
+  unreadMessages?: number;
 }
 
 export default function CandidatesPage() {
@@ -46,10 +53,11 @@ export default function CandidatesPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [viewMode, setViewMode] = useState<"full" | "compact">("full");
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchApplications();
-  }, [statusFilter]);
+  }, [statusFilter, refreshKey]);
 
   const fetchApplications = async () => {
     try {
@@ -59,7 +67,25 @@ export default function CandidatesPage() {
       const response = await fetch(`/api/applications?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setApplications(data.applications);
+
+        // Fetch unread messages for each candidate (to show badge on candidate cards)
+        const applicationsWithMessages = await Promise.all(
+          data.applications.map(async (app: Application) => {
+            try {
+              const msgResponse = await fetch(`/api/candidates/${app.candidate.id}/messages`);
+              if (msgResponse.ok) {
+                const messages = await msgResponse.json();
+                const unreadCount = messages.filter((m: any) => !m.read).length;
+                return { ...app, unreadMessages: unreadCount };
+              }
+            } catch (error) {
+              console.error("Error fetching messages for candidate:", app.candidate.id);
+            }
+            return { ...app, unreadMessages: 0 };
+          })
+        );
+
+        setApplications(applicationsWithMessages);
       }
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -67,6 +93,17 @@ export default function CandidatesPage() {
       setLoading(false);
     }
   };
+
+  // Listen for message read events and refresh candidate list
+  useEffect(() => {
+    const handleMessagesRead = () => {
+      console.log("Messages read event received, refreshing candidate list...");
+      setRefreshKey(prev => prev + 1);
+    };
+
+    window.addEventListener('messagesRead', handleMessagesRead);
+    return () => window.removeEventListener('messagesRead', handleMessagesRead);
+  }, []);
 
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
     try {
@@ -180,12 +217,16 @@ export default function CandidatesPage() {
                   ...app.candidate,
                   applications: [app],
                 }}
+                unreadMessages={app.unreadMessages > 0 ? app.unreadMessages : undefined}
                 onStatusChange={handleStatusChange}
               />
             ) : (
               <div key={app.id} onClick={() => setSelectedApplication(app)}>
                 <CompactCandidateCard
-                  application={app}
+                  application={{
+                    ...app,
+                    unreadMessages: app.unreadMessages > 0 ? app.unreadMessages : undefined,
+                  }}
                   onClick={() => setSelectedApplication(app)}
                 />
               </div>

@@ -1,22 +1,30 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Briefcase, Mail, MapPin, Star } from "lucide-react";
+import { Briefcase, Mail, MapPin, Star, MessageSquare, Phone } from "lucide-react";
 
 interface CompactCandidateCardProps {
   application: {
     id: string;
     status: string;
     appliedAt: string;
+    // Application-specific fields (from application record)
     name?: string | null;
     email?: string | null;
     phone?: string | null;
     location?: string | null;
+    linkedin?: string | null;
+    website?: string | null;
+    coverLetter?: string | null;
+    resumeUrl?: string | null;
+    // Candidate fields (fallback)
     candidate: {
       id: string;
       name: string;
       email: string;
+      phone: string | null;
       location: string | null;
       aiScore: number | null;
       skills: string[];
@@ -25,24 +33,35 @@ interface CompactCandidateCardProps {
       id: string;
       title: string;
     };
+    unreadMessages?: number;
   };
   onClick: () => void;
 }
 
-const statusColors: Record<string, "default" | "secondary" | "warning" | "success" | "destructive"> = {
-  SUBMITTED: "secondary",
-  SCREENING: "warning",
-  INTERVIEW: "secondary",
-  OFFER: "success",
-  HIRED: "success",
-  REJECTED: "destructive",
-};
-
 export function CompactCandidateCard({ application, onClick }: CompactCandidateCardProps) {
   // Use application-specific data if available, otherwise use candidate data
+  // For new applications, data is stored in the application record
   const name = application.name || application.candidate.name;
   const email = application.email || application.candidate.email;
+  const phone = application.phone || application.candidate.phone;
   const location = application.location || application.candidate.location;
+  
+  const statusColors: Record<string, "default" | "secondary" | "warning" | "success" | "destructive"> = {
+    SUBMITTED: "secondary",
+    SCREENING: "warning",
+    INTERVIEW: "secondary",
+    OFFER: "success",
+    HIRED: "success",
+    REJECTED: "destructive",
+  };
+  
+  // Debug logging
+  useEffect(() => {
+    console.log("=== COMPACT CARD DEBUG ===");
+    console.log("application:", application);
+    console.log("unreadMessages:", application.unreadMessages);
+    console.log("========================");
+  }, [application]);
   
   return (
     <Card 
@@ -58,9 +77,17 @@ export function CompactCandidateCard({ application, onClick }: CompactCandidateC
                 {name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
-                  {name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                    {name}
+                  </h3>
+                  {application.unreadMessages && application.unreadMessages > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      <MessageSquare className="w-3 h-3 mr-1" />
+                      {application.unreadMessages}
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-xs text-gray-500 flex items-center gap-2">
                   <Mail className="w-3 h-3" />
                   <span className="truncate">{email}</span>
@@ -78,13 +105,25 @@ export function CompactCandidateCard({ application, onClick }: CompactCandidateC
             <span className="truncate">{application.job.title}</span>
           </div>
 
-          {/* Location */}
-          {location && (
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <MapPin className="w-3 h-3" />
-              <span>{location}</span>
-            </div>
-          )}
+          {/* Contact Info - Show if available */}
+          <div className="pt-2 border-t border-gray-100 space-y-1">
+            {phone ? (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Phone className="w-3 h-3" />
+                <span>{phone}</span>
+              </div>
+            ) : (
+              <div className="text-xs text-gray-400 italic">No phone</div>
+            )}
+            {location ? (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <MapPin className="w-3 h-3" />
+                <span>{location}</span>
+              </div>
+            ) : (
+              <div className="text-xs text-gray-400 italic">No location</div>
+            )}
+          </div>
 
           {/* AI Score & Skills */}
           <div className="flex items-center justify-between pt-2 border-t border-gray-100">

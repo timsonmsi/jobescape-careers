@@ -9,10 +9,17 @@ export async function PUT(
     const body = await request.json();
     const { read } = body;
 
+    console.log("=== MARKING MESSAGE AS READ ===");
+    console.log("Message ID:", params.id);
+    console.log("Setting read to:", read);
+    
     const message = await prisma.message.update({
       where: { id: params.id },
       data: { read },
     });
+
+    console.log("Message updated:", message);
+    console.log("==============================");
 
     return NextResponse.json(message);
   } catch (error) {

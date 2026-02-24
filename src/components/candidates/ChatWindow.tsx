@@ -19,9 +19,10 @@ interface ChatWindowProps {
   candidateId: string;
   candidateName: string;
   onClose: () => void;
+  onMessagesRead?: () => void;
 }
 
-export function ChatWindow({ candidateId, candidateName, onClose }: ChatWindowProps) {
+export function ChatWindow({ candidateId, candidateName, onClose, onMessagesRead }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -38,11 +39,45 @@ export function ChatWindow({ candidateId, candidateName, onClose }: ChatWindowPr
     scrollToBottom();
   }, [messages]);
 
+  // Mark messages as read when chat opens
+  useEffect(() => {
+    if (messages.length > 0) {
+      const unreadMessages = messages.filter((m) => !m.read);
+      if (unreadMessages.length > 0) {
+        const timer = setTimeout(async () => {
+          try {
+            await Promise.all(
+              unreadMessages.map((msg) =>
+                fetch(`/api/messages/${msg.id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ read: true }),
+                })
+              )
+            );
+            // Dispatch event to refresh sidebar badge
+            window.dispatchEvent(new CustomEvent('messagesRead'));
+            // Notify parent
+            if (onMessagesRead) {
+              onMessagesRead();
+            }
+            fetchMessages();
+          } catch (error) {
+            console.error("Error marking messages as read:", error);
+          }
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [messages.length]);
+
   const fetchMessages = async () => {
     try {
       const response = await fetch(`/api/candidates/${candidateId}/messages`);
       if (response.ok) {
         const data = await response.json();
+        const unreadCount = data.filter((m: Message) => !m.read).length;
+        console.log("ChatWindow - Fetched messages:", data.length, "unread:", unreadCount);
         setMessages(data);
       }
     } catch (error) {

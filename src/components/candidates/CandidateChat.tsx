@@ -31,57 +31,62 @@ export function CandidateChat({ candidateId, candidateName = "Candidate", onUnre
   useEffect(() => {
     if (isOpen) {
       fetchMessages();
-      // Mark all as read when opening
-      setUnreadCount(0);
+      // Mark messages from recruiter as read when chat opens
+      const timer = setTimeout(() => {
+        markMessagesAsRead();
+      }, 500);
+      return () => clearTimeout(timer);
     }
   }, [isOpen, candidateId]);
 
   useEffect(() => {
-    // Poll for new messages every 5 seconds
+    // Poll for new messages every 5 seconds (even when chat is closed)
+    // This updates the badge count
+    console.log("CandidateChat: Starting message polling for candidate:", candidateId);
+    fetchMessages(); // Fetch immediately
     const interval = setInterval(() => {
+      console.log("CandidateChat: Polling for messages...");
       fetchMessages();
     }, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      console.log("CandidateChat: Stopping message polling");
+      clearInterval(interval);
+    };
   }, [candidateId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    // When chat opens, mark all as read after a short delay
-    if (isOpen && messages.length > 0) {
-      const timer = setTimeout(() => {
-        markAllAsRead();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, messages]);
+  // Don't auto-mark messages as read - candidates should only mark recruiter messages as read manually
 
   const fetchMessages = async () => {
     try {
+      console.log("CandidateChat: Fetching messages for candidate:", candidateId);
       const response = await fetch(`/api/candidates/${candidateId}/messages`);
       if (response.ok) {
         const data = await response.json();
-        const unreadMessages = data.filter((m: Message) => !m.read);
-        if (unreadMessages.length > 0 && !isOpen) {
-          setUnreadCount(unreadMessages.length);
-        }
+        // Only count messages from recruiter as unread
+        const unreadFromRecruiter = data.filter((m: Message) => !m.read && m.senderName === "Recruiter");
+        console.log("CandidateChat - Messages fetched:", data.length, "Unread from recruiter:", unreadFromRecruiter.length, "Setting unreadCount to:", unreadFromRecruiter.length);
+        setUnreadCount(unreadFromRecruiter.length);
         setMessages(data);
+      } else {
+        console.error("CandidateChat: Failed to fetch messages, status:", response.status);
       }
     } catch (error) {
-      console.error("Error fetching messages:", error);
+      console.error("CandidateChat: Error fetching messages:", error);
     }
   };
 
-  // Mark all messages as read
-  const markAllAsRead = async () => {
+  // Mark recruiter messages as read
+  const markMessagesAsRead = async () => {
     try {
-      const unreadMessages = messages.filter((m: Message) => !m.read);
-      if (unreadMessages.length === 0) return;
-      
+      const unreadFromRecruiter = messages.filter((m: Message) => !m.read && m.senderName === "Recruiter");
+      if (unreadFromRecruiter.length === 0) return;
+
       await Promise.all(
-        unreadMessages.map((msg) =>
+        unreadFromRecruiter.map((msg) =>
           fetch(`/api/messages/${msg.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },

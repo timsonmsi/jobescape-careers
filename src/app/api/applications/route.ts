@@ -179,6 +179,27 @@ export async function POST(request: NextRequest) {
       console.log("Existing candidate found:", candidate.id);
     }
 
+    // Check if application already exists
+    const existingApplication = await prisma.application.findUnique({
+      where: {
+        candidateId_jobId: {
+          candidateId: candidate.id,
+          jobId,
+        },
+      },
+    });
+
+    if (existingApplication) {
+      console.log("Application already exists:", existingApplication.id);
+      return NextResponse.json(
+        { 
+          error: "You have already applied to this position",
+          applicationId: existingApplication.id
+        },
+        { status: 409 }
+      );
+    }
+
     // Create application with application-specific data
     console.log("Creating application...");
     const application = await prisma.application.create({

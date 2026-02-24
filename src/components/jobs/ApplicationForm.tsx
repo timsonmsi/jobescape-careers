@@ -131,6 +131,9 @@ export function ApplicationForm({ job }: ApplicationFormProps) {
       if (response.ok) {
         setAiAnalysis(result.aiAnalysis);
         setSubmitted(true);
+      } else if (response.status === 409) {
+        // Already applied
+        alert("You have already applied to this position. You can only apply once per job.");
       } else {
         const errorMsg = result.error || `Failed with status ${response.status}`;
         console.error("Application error:", errorMsg);

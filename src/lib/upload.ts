@@ -7,8 +7,7 @@ export async function saveUploadedFile(
   file: File,
   subDir: string = "resumes"
 ): Promise<{ path: string; url: string }> {
-  // Use /tmp for Vercel, local for development
-  const uploadDir = process.env.UPLOAD_DIR || "/tmp/uploads";
+  const uploadDir = process.env.UPLOAD_DIR || "./uploads";
   const fullPath = join(uploadDir, subDir);
 
   // Create directory if it doesn't exist
@@ -27,7 +26,7 @@ export async function saveUploadedFile(
 
   return {
     path: filePath,
-    url: `/api/resumes/${fileName}`, // We'll store just the filename
+    url: `/uploads/${subDir}/${fileName}`,
   };
 }
 

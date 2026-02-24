@@ -8,10 +8,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // params.id could be application ID or filename
-    let resumePath: string | null = null;
-    
-    // First try to find by application ID
+    // Get the application to find the resume
     const application = await prisma.application.findUnique({
       where: { id: params.id },
       select: {
@@ -19,22 +16,15 @@ export async function GET(
       },
     });
 
-    if (application?.resumeUrl) {
-      // resumeUrl is now just the filename
-      const uploadDir = process.env.UPLOAD_DIR || "/tmp/uploads";
-      resumePath = join(uploadDir, "resumes", application.resumeUrl);
-    } else {
-      // Try to find by filename directly
-      const uploadDir = process.env.UPLOAD_DIR || "/tmp/uploads";
-      resumePath = join(uploadDir, "resumes", params.id);
-    }
-
-    if (!resumePath) {
+    if (!application?.resumeUrl) {
       return NextResponse.json(
         { error: "Resume not found" },
         { status: 404 }
       );
     }
+
+    // The resumeUrl is like "/uploads/resumes/xxx.pdf"
+    const resumePath = join(process.cwd(), application.resumeUrl);
 
     try {
       const file = await fs.readFile(resumePath);
@@ -61,13 +51,8 @@ export async function GET(
       });
     } catch (fileError: any) {
       console.error("File not found:", resumePath);
-      console.error("File error:", fileError.message);
-      
       return NextResponse.json(
-        { 
-          error: "Resume file not found",
-          details: fileError.message
-        },
+        { error: "Resume file not found on server" },
         { status: 404 }
       );
     }

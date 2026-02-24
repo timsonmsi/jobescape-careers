@@ -156,6 +156,10 @@ export default function CandidateDashboardPage() {
 
       if (response.ok) {
         alert(`Interview ${status.toLowerCase()}!`);
+        // Dispatch event to notify admin sidebar
+        window.dispatchEvent(new CustomEvent('interviewResponse', {
+          detail: { interviewId: inviteId }
+        }));
         fetchCandidateData(localStorage.getItem("candidateId")!);
       }
     } catch (error) {
@@ -731,12 +735,15 @@ export default function CandidateDashboardPage() {
         )}
       </main>
 
-      {/* Floating Chat Window */}
+      {/* Floating Chat Window - Always visible for candidates to contact recruiters */}
       {candidate && (
         <CandidateChat 
           candidateId={candidate.id} 
           candidateName={candidate.name}
-          onUnreadCountChange={(count) => setUnreadChatMessages(count)}
+          onUnreadCountChange={(count) => {
+            console.log("Unread chat messages changed:", count);
+            setUnreadChatMessages(count);
+          }}
         />
       )}
     </div>
